@@ -103,7 +103,7 @@ if !exists('g:neodbg_openwatchs_default')
 endif
 
 let g:neodbg_console_name = "__DebugConsole__"
-let g:neodbg_console_height = 15
+let g:neodbg_console_width = 40
 let g:neodbg_prompt = '(gdb) '
 
 let g:neodbg_locals_name = "__Locals__"
@@ -233,8 +233,8 @@ function! NeoDebug(cmd, ...)  " [mode]
             call job_start(sed_cmd)
         endif
 
-        set nocursorline
-        set nocursorcolumn
+        "set nocursorline
+        "set nocursorcolumn
 
         call neodebug#OpenConsole()
         let s:neodbg_console_win = win_getid(winnr())
@@ -301,7 +301,12 @@ function! NeoDebug(cmd, ...)  " [mode]
     endif
 
     if usercmd == 'c'
-        let usercmd = s:neodbg_is_debugging ? 'continue' : 'run'
+        "let usercmd = s:neodbg_is_debugging ? 'continue' : 'run'
+        let usercmd = 'continue'
+    endif
+
+    if usercmd == 'u'
+      let usercmd = 'up'
     endif
 
     call NeoDebugSendCommand(usercmd, mode)
@@ -541,6 +546,8 @@ function! s:HandleOutput(chan, msg)
 
     if  "complete" == strpart(s:comm_msg, 2, strlen("complete"))  && ( s:comm_msg =~  g:neodbg_prompt)
         let s:completer_skip_flag = 0
+        let s:output = s:comm_msg
+        echomsg 'handle complete ' . s:comm_msg
         let s:comm_msg = ''
         return
     endif
@@ -828,6 +835,9 @@ function! s:HandleOutput(chan, msg)
 
     endif
 
+    call neodebug#CloseLocalsWindow()
+    call neodebug#CloseExpressionsWindow()
+
 endfunction
 
 function! NeoDebugFoldTextExpr()
@@ -1042,6 +1052,10 @@ function! NeoDebugExprPrint(expr)
 endfunction
 
 
+fu! EndsWith(longer, shorter) abort
+  return a:longer[len(a:longer)-len(a:shorter):] ==# a:shorter
+endfunction
+
 let s:neodbg_complete_flag = 0
 function! NeoDebugComplete(findstart, base)
 
@@ -1054,17 +1068,24 @@ function! NeoDebugComplete(findstart, base)
             let usercmd = 'complete ' .  usercmd
         endif
 
+        let s:output = ''
         call NeoDebugSendCommand(usercmd)
-
-        let output = ch_readraw(s:neodbg_chan)
-        let s:completers = []
-        while output != g:neodbg_prompt
-            if output =~ '\~"' 
-                let completer = strpart(output, 2, strlen(output)-5) 
-                call add(s:completers, completer)
-            endif
-            let output = ch_readraw(s:neodbg_chan)
+        while s:output == ''
+          sleep 10m
         endw
+        echomsg 'got the complete output '. s:output
+
+        let s:completers = []
+        echomsg 'neodbg prompt: ' . g:neodbg_prompt
+        let comps = split(s:output, '\~')
+        let comp_len = len(comps)
+        let last = comps[-1]
+        let last = last[:-12]
+        let comps = comps[1:-2]
+        call add(comps, last)
+        for comp_ in comps
+          call add(s:completers, comp_[1:-4]. ' ')
+        endfor
 
         " locate the start of the word
         let line = getline('.')
@@ -1076,18 +1097,11 @@ function! NeoDebugComplete(findstart, base)
     else
         " find s:completers matching the "a:base"
         let res = []
+        if len(s:completers) == 1 && EndsWith(s:completers[0], a:base)
+          return [a:base.' ']
+        endi
         for m in (s:completers)
-            if a:base == '' 
-                return res
-            endif
-
-            if m =~ '^' . a:base
-                call add(res, m)
-            endif
-
-            if m =~ '^\a\+\s\+' . a:base
-                call add(res, substitute(m, '^\a*\s*', '', ''))
-            endif
+          call add(res, split(m, ' ')[-1] . ' ')
         endfor
         return res
     endif
@@ -1228,6 +1242,12 @@ function! NeoDebugSendCommand(cmd, ...)  " [mode]
         let  s:neodbg_quitted = 1
     endif
 endfunction
+
+function! SendInterrupt()
+  "call NeoDebugSendCommand('-exec-interrupt')
+  let s:job_id = jobpid(s:nvim_commjob)
+  call system('kill -2 ' . s:job_id)
+endfunc
 
 function! s:SendKey(key)
     if has('nvim')

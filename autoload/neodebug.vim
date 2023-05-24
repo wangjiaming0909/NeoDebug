@@ -67,11 +67,13 @@ function! neodebug#OpenConsole()
     setlocal nonumber
     setlocal winfixheight
     setlocal cursorline
+    setlocal signcolumn=no
 
     setlocal foldcolumn=2
     setlocal foldtext=NeoDebugFoldTextExpr()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
+    setlocal wrap
 
     call neodebug#InstallCommandsShotcut()
 
@@ -79,7 +81,7 @@ function! neodebug#OpenConsole()
     starti!
     " call cursor(0, 7)
     if has('nvim')
-        "not implement
+      setl completefunc=NeoDebugComplete
     else
         setl completefunc=NeoDebugComplete
     endif
@@ -100,9 +102,9 @@ function! neodebug#OpenConsoleWindow(...)
 
     " Create the tag explorer window
     if para == 'v'
-    exe 'silent!  botright ' . g:neodbg_console_height . 'split ' . wcmd
+        exe 'silent! vertical topleft ' . g:neodbg_console_width . 'split ' . wcmd
     elseif para == 'h'
-        exe 'silent! bel ' . g:neodbg_console_height. 'split ' . wcmd
+        exe 'silent! bel ' . g:neodbg_console_width. 'split ' . wcmd
     endif
     if line('$') <= 1 && g:neodbg_enable_help
         silent call append ( 0, s:help_text )
@@ -441,6 +443,7 @@ function! neodebug#GotoLocalsWindow()
             else
                 call neodebug#OpenLocals()
             endif
+            "call neodebug#CloseLocalsWindow()
 
             let neodbg_winnr = bufwinnr(g:neodbg_locals_name)
 
@@ -1162,6 +1165,7 @@ function! neodebug#GotoExpressionsWindow()
             else
                 call neodebug#OpenExpressions()
             endif
+            "call neodebug#CloseExpressionsWindow()
 
             let neodbg_winnr = bufwinnr(g:neodbg_expressions_name)
         else
@@ -1613,9 +1617,9 @@ endfunction
 
 function! neodebug#SetWindowSytaxHilight()
 
-    hi NeoDbgBreakPoint    guibg=darkblue  ctermbg=darkblue term=reverse 
-    hi NeoDbgDisabledBreak guibg=lightblue guifg=black ctermbg=lightblue ctermfg=black
-    hi NeoDbgPC            guibg=Orange    guifg=black gui=bold ctermbg=Yellow ctermfg=black
+    "hi NeoDbgBreakPoint    guibg=darkblue  ctermbg=darkblue term=reverse 
+    "hi NeoDbgDisabledBreak guibg=lightblue guifg=black ctermbg=lightblue ctermfg=black
+    hi NeoDbgPC            guibg=Orange    guifg=black gui=bold ctermbg=11 ctermfg=black
 
     " hi NeoDbgBreakPoint guibg=darkred guifg=white ctermbg=darkred ctermfg=white
     " hi NeoDbgDisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
@@ -1672,10 +1676,14 @@ function! neodebug#InstallShotcut()
     noremap <buffer><silent> <Tab> ""
     noremap <buffer><silent> <S-Tab> ""
 
-    nmap <buffer><silent> <ESC> :call neodebug#CloseConsoleWindow()<CR>
+    "inoremap <buffer><silent> <ESC> <ESC>:call neodebug#CloseConsoleWindow()<CR>
+    "nmap <buffer><silent> <ESC> :call neodebug#CloseConsoleWindow()<CR>
+    "inoremap <buffer><silent> <ESC> <ESC>:wincmd l<CR>
 
     inoremap <expr><buffer> <silent> <CR> pumvisible() ? "\<c-y><c-o>:call NeoDebug(getline('.'), 'i')<cr>" : "<c-o>:call NeoDebug(getline('.'), 'i')<cr>"
     " inoremap <buffer> <silent> <C-CR> :<c-o>:call NeoDebug("", 'i')<cr>
+    inoremap <buffer> <silent> <C-C> <ESC>:call SendInterrupt()<cr>
+    nnoremap <buffer> <silent> <C-C> :call SendInterrupt()<cr>
 
     nnoremap <buffer> <silent> <CR> :call NeoDebug(getline('.'), 'n')<cr>
     nmap <buffer> <silent> <2-LeftMouse> <cr>
@@ -1702,7 +1710,7 @@ function! neodebug#InstallShotcut()
     exe printf("map! <silent> %s <c-o>:NeoDebug k<cr>", g:neodbg_keymap_stop_debugging)
     exe printf("nmap <silent> %s :call neodebug#ToggleConsoleWindow()<cr>", g:neodbg_keymap_toggle_console_win)
     exe printf("map! <silent> %s <c-o>:call neodebug#ToggleConsoleWindow()<cr>", g:neodbg_keymap_toggle_console_win)
-    exe printf("noremap <silent> %s :NeoDebugStop<cr>", g:neodbg_keymap_terminate_debugger)
+    "exe printf("noremap <silent> %s :NeoDebugStop<cr>", g:neodbg_keymap_terminate_debugger)
 
 endfunction
 
