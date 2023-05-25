@@ -33,7 +33,7 @@ if !exists('g:neodbg_enable_help')
 endif
 
 if !exists('g:neodbg_keymap_toggle_breakpoint')
-    let g:neodbg_keymap_toggle_breakpoint = '<F9>'
+    let g:neodbg_keymap_toggle_breakpoint = '<C-B>'
 endif
 
 if !exists('g:neodbg_keymap_next')
@@ -52,7 +52,7 @@ if !exists('g:neodbg_keymap_step_into')
     let g:neodbg_keymap_step_into = '<F11>'
 endif
 if !exists('g:neodbg_keymap_step_out')
-    let g:neodbg_keymap_step_out = '<S-F11>'
+    let g:neodbg_keymap_step_out = '<F9>'
 endif
 
 if !exists('g:neodbg_keymap_continue')
@@ -60,7 +60,7 @@ if !exists('g:neodbg_keymap_continue')
 endif
 
 if !exists('g:neodbg_keymap_print_variable')
-    let g:neodbg_keymap_print_variable = '<C-P>'
+    let g:neodbg_keymap_print_variable = 'S-F1'
 endif
 
 if !exists('g:neodbg_keymap_stop_debugging')
@@ -175,155 +175,156 @@ let s:cur_winnr = 0
 " n - press enter (or double click) in console window
 " c - run debugger command
 function! NeoDebug(cmd, ...)  " [mode]
-    let usercmd = a:cmd
-    let mode = a:0>0 ? a:1 : ''
+  call EndHistoryMode()
+  let usercmd = a:cmd
+  let mode = a:0>0 ? a:1 : ''
 
-    let s:cur_wid = win_getid(winnr())
-    " echomsg "s:cur_wid1".s:cur_wid
-    let s:cur_winnr = bufwinnr("%")
+  let s:cur_wid = win_getid(winnr())
+  " echomsg "s:cur_wid1".s:cur_wid
+  let s:cur_winnr = bufwinnr("%")
 
-    if s:neodbg_running == 0
-        let s:neodbg_port= 30000 + reltime()[1] % 10000
+  if s:neodbg_running == 0
+    let s:neodbg_port= 30000 + reltime()[1] % 10000
 
-        call neodebug#OpenLocals()
-        let g:neodbg_locals_win = win_getid(winnr())
+    call neodebug#OpenLocals()
+    let g:neodbg_locals_win = win_getid(winnr())
 
-        call neodebug#OpenRegisters()
-        let g:neodbg_registers_win = win_getid(winnr())
+    call neodebug#OpenRegisters()
+    let g:neodbg_registers_win = win_getid(winnr())
 
-        call neodebug#OpenStackFrames()
-        let g:neodbg_stackframes_win = win_getid(winnr())
+    call neodebug#OpenStackFrames()
+    let g:neodbg_stackframes_win = win_getid(winnr())
 
-        call neodebug#OpenThreads()
-        let g:neodbg_threads_win = win_getid(winnr())
+    call neodebug#OpenThreads()
+    let g:neodbg_threads_win = win_getid(winnr())
 
-        call neodebug#OpenBreakpoints()
-        let g:neodbg_breakpoints_win = win_getid(winnr())
+    call neodebug#OpenBreakpoints()
+    let g:neodbg_breakpoints_win = win_getid(winnr())
 
-        call neodebug#OpenDisas()
-        let g:neodbg_disas_win = win_getid(winnr())
+    call neodebug#OpenDisas()
+    let g:neodbg_disas_win = win_getid(winnr())
 
-        call neodebug#OpenExpressions()
-        let g:neodbg_expressions_win = win_getid(winnr())
+    "call neodebug#OpenExpressions()
+    "let g:neodbg_expressions_win = win_getid(winnr())
 
-        call neodebug#OpenWatchpoints()
-        let g:neodbg_watchpoints_win = win_getid(winnr())
+    "call neodebug#OpenWatchpoints()
+    "let g:neodbg_watchpoints_win = win_getid(winnr())
 
 
-        call neodebug#CloseWatchpointsWindow()
-        call neodebug#CloseExpressionsWindow()
-        call neodebug#CloseDisasWindow()
-        call neodebug#CloseBreakpointsWindow()
-        call neodebug#CloseThreadsWindow()
-        call neodebug#CloseStackFramesWindow()
-        call neodebug#CloseRegistersWindow()
-        call neodebug#CloseLocalsWindow()
-        call s:NeoDebugStart(usercmd)
+    call neodebug#CloseWatchpointsWindow()
+    call neodebug#CloseExpressionsWindow()
+    call neodebug#CloseDisasWindow()
+    call neodebug#CloseBreakpointsWindow()
+    call neodebug#CloseThreadsWindow()
+    call neodebug#CloseStackFramesWindow()
+    call neodebug#CloseRegistersWindow()
+    call neodebug#CloseLocalsWindow()
+    call s:NeoDebugStart(usercmd)
 
-        " save current setting and restore when neodebug quits via 'so .exrc'
-        if finddir(s:neodbg_exrc_dir) == ''
-            call mkdir(s:neodbg_exrc_dir, "p")
-        endif
-        exec 'mk! ' . s:neodbg_exrc . s:neodbg_port
-        let sed_cmd = 'sed -i "/^set /d" ' . s:neodbg_exrc . s:neodbg_port
+    " save current setting and restore when neodebug quits via 'so .exrc'
+    if finddir(s:neodbg_exrc_dir) == ''
+      call mkdir(s:neodbg_exrc_dir, "p")
+    endif
+    exec 'mk! ' . s:neodbg_exrc . s:neodbg_port
+    let sed_cmd = 'sed -i "/^set /d" ' . s:neodbg_exrc . s:neodbg_port
 
-        if has('nvim')
-            call jobstart(sed_cmd)
-        else
-            call job_start(sed_cmd)
-        endif
-
-        "set nocursorline
-        "set nocursorcolumn
-
-        call neodebug#OpenConsole()
-        let s:neodbg_console_win = win_getid(winnr())
-        "fix minibufexpl plugin conflict
-        " call neodebug#CloseConsoleWindow()
-        " call neodebug#OpenConsoleWindow()
-
-        let s:neodbg_quitted = 0
-        let s:neodbg_running = 1
-
-        return
+    if has('nvim')
+      call jobstart(sed_cmd)
+    else
+      call job_start(sed_cmd)
     endif
 
-    if s:neodbg_running == 0
-        echomsg "NeoDebug is not running"
-        return
-    endif
+    "set nocursorline
+    "set nocursorcolumn
 
-    " if -1 == bufwinnr(g:neodbg_console_name)
-        " call neodebug#ToggleConsoleWindow()
-        " return
-    " endif
+    call neodebug#OpenConsole()
+    let s:neodbg_console_win = win_getid(winnr())
+    "fix minibufexpl plugin conflict
+    " call neodebug#CloseConsoleWindow()
+    " call neodebug#OpenConsoleWindow()
 
-    " echomsg "usercmd[".usercmd."]"
-    if g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*(gdb)' 
-        let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
-    elseif g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*>\s*' 
-        let usercmd = substitute(usercmd, '^\s*>\s*', '', '')
-        " echomsg "usercmd2[".usercmd."]"
-    endif
+    let s:neodbg_quitted = 0
+    let s:neodbg_running = 1
 
-    " goto frame
-    " #0  factor (n=1, r=0x22fe48) at factor/factor.c:4
-    " #1  0x00000000004015e2 in main (argc=1, argv=0x5b3480) at sample.c:12
-    if s:NeoDebugMatch(usercmd, '\v^#(\d+)')  && s:neodbg_is_debugging
-        let usercmd = "frame " . s:neodbg_match[1]
-        call NeoDebugSendCommand(usercmd)
-        return
-    endif
+    return
+  endif
 
-    " goto thread and show frames
-    " Id   Target Id         Frame 
-    " 2    Thread 83608.0x14dd0 0x00000000773c22da in ntdll!RtlInitString () from C:\\windows\\SYSTEM32\tdll.dll
-    " 1    Thread 83608.0x1535c factor (n=1, r=0x22fe48) at factor/factor.c:5
-    if s:NeoDebugMatch(usercmd, '\v^\s+(\d+)\s+Thread ') && s:neodbg_is_debugging
-        let usercmd = "-thread-select " . s:neodbg_match[1]
-        call NeoDebugSendCommand(usercmd)
-        call NeoDebugSendCommand("bt")
-        return
-    endif
+  if s:neodbg_running == 0
+    echomsg "NeoDebug is not running"
+    return
+  endif
 
-    " Num     Type           Disp Enb Address            What
-    " 1       breakpoint     keep y   0x00000000004015c4 in main at sample.c:8
-    " 2       breakpoint     keep y   0x00000000004015d4 in main at sample.c:12
-    " 3       breakpoint     keep y   0x00000000004015e2 in main at sample.c:13
-    if s:NeoDebugMatch(usercmd, '\v<at %(0x\S+ )?(..[^:]*):(\d+)') || s:NeoDebugMatch(usercmd, '\vfile ([^,]+), line (\d+)') || s:NeoDebugMatch(usercmd, '\v\((..[^:]*):(\d+)\)')
-        call s:NeoDebugGotoFile(s:neodbg_match[1], s:neodbg_match[2])
-        return
-    endif
+  " if -1 == bufwinnr(g:neodbg_console_name)
+  " call neodebug#ToggleConsoleWindow()
+  " return
+  " endif
 
-    if mode == 'n'  " mode n: jump to source or current callstack, dont exec other gdb commands
-        call NeoDebugExpandPointerExpr()
-        return
-    endif
+  " echomsg "usercmd[".usercmd."]"
+  if g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*(gdb)' 
+    let usercmd = substitute(usercmd, '^\s*(gdb)\s*', '', '')
+  elseif g:neodbg_debugger == 'gdb' && usercmd =~ '^\s*>\s*' 
+    let usercmd = substitute(usercmd, '^\s*>\s*', '', '')
+    " echomsg "usercmd2[".usercmd."]"
+  endif
 
-    if usercmd == 'c'
-        "let usercmd = s:neodbg_is_debugging ? 'continue' : 'run'
-        let usercmd = 'continue'
-    endif
+  " goto frame
+  " #0  factor (n=1, r=0x22fe48) at factor/factor.c:4
+  " #1  0x00000000004015e2 in main (argc=1, argv=0x5b3480) at sample.c:12
+  if s:NeoDebugMatch(usercmd, '\v^#(\d+)')  && s:neodbg_is_debugging
+    let usercmd = "frame " . s:neodbg_match[1]
+    call NeoDebugSendCommand(usercmd)
+    return
+  endif
 
-    if usercmd == 'u'
-      let usercmd = 'up'
-    endif
+  " goto thread and show frames
+  " Id   Target Id         Frame 
+  " 2    Thread 83608.0x14dd0 0x00000000773c22da in ntdll!RtlInitString () from C:\\windows\\SYSTEM32\tdll.dll
+  " 1    Thread 83608.0x1535c factor (n=1, r=0x22fe48) at factor/factor.c:5
+  if s:NeoDebugMatch(usercmd, '\v^\s+(\d+)\s+Thread ') && s:neodbg_is_debugging
+    let usercmd = "-thread-select " . s:neodbg_match[1]
+    call NeoDebugSendCommand(usercmd)
+    call NeoDebugSendCommand("bt")
+    return
+  endif
 
-    call NeoDebugSendCommand(usercmd, mode)
+  " Num     Type           Disp Enb Address            What
+  " 1       breakpoint     keep y   0x00000000004015c4 in main at sample.c:8
+  " 2       breakpoint     keep y   0x00000000004015d4 in main at sample.c:12
+  " 3       breakpoint     keep y   0x00000000004015e2 in main at sample.c:13
+  if s:NeoDebugMatch(usercmd, '\v<at %(0x\S+ )?(..[^:]*):(\d+)') || s:NeoDebugMatch(usercmd, '\vfile ([^,]+), line (\d+)') || s:NeoDebugMatch(usercmd, '\v\((..[^:]*):(\d+)\)')
+    call s:NeoDebugGotoFile(s:neodbg_match[1], s:neodbg_match[2])
+    return
+  endif
+
+  if mode == 'n'  " mode n: jump to source or current callstack, dont exec other gdb commands
+    call NeoDebugExpandPointerExpr()
+    return
+  endif
+
+  if usercmd == 'c'
+    "let usercmd = s:neodbg_is_debugging ? 'continue' : 'run'
+    let usercmd = 'continue'
+  endif
+
+  if usercmd == 'u'
+    let usercmd = 'up'
+  endif
+
+  call NeoDebugSendCommand(usercmd, mode)
 endfunction
 
 function! NeoDebugStop(cmd)
-    " echomsg "s:neodbg_running".s:neodbg_running
+  " echomsg "s:neodbg_running".s:neodbg_running
 
-	if !s:neodbg_running
-		return
-	endif
+  if !s:neodbg_running
+    return
+  endif
 
-    if has('nvim')
-        call jobstop(s:nvim_commjob)
-    else
-        call job_stop(s:commjob)
-    endif
+  if has('nvim')
+    call jobstop(s:nvim_commjob)
+  else
+    call job_stop(s:commjob)
+  endif
 endfunction
 
 let s:neodbg_init_flag = 1
@@ -379,13 +380,14 @@ function! s:NeoDebugStart(cmd)
     elseif s:isunix
         call NeoDebugSendCommand('show inferior-tty')
     endif
-    call NeoDebugSendCommand('set print pretty on')
-    call NeoDebugSendCommand('set breakpoint pending on')
-    call NeoDebugSendCommand('set pagination off')
+    "call NeoDebugSendCommand('set print pretty on')
+    "call NeoDebugSendCommand('set breakpoint pending on')
+    "call NeoDebugSendCommand('set pagination off')
     " let s:neodbg_init_flag = 0
 
     " Install debugger commands in the text window.
     call win_gotoid(s:startwin)
+    call NeoDebugSetStartWinReadOnly()
 
     " Enable showing a balloon with eval info
     if has("balloon_eval") || has("balloon_eval_term")
@@ -402,7 +404,7 @@ function! s:NeoDebugStart(cmd)
     augroup NeoDebugAutoCMD
         au BufRead * call s:BufferRead()
         au BufUnload * call s:BufferUnload()
-        au VimLeavePre * call delete(s:neodbg_exrc . s:neodbg_port)
+        "au VimLeavePre * call delete(s:neodbg_exrc . s:neodbg_port)
     augroup END
 
 endfunction
@@ -503,8 +505,15 @@ let s:comm_msg   = ''
 let s:init_messages = ["(gdb) "]
 let s:init_count = 0
 let s:start_count = 0
+
+function! s:HandleComplete()
+endfunc
+
+function! s:HandleNormalCmds()
+endfunc
 " Handle a message received from debugger
 function! s:HandleOutput(chan, msg)
+  let current_win = win_getid(winnr())
     if g:neodbg_debuginfo == 1
         echomsg "<GDB><HandleOutput>:".a:msg."[s:mode:".s:mode."]"
     endif
@@ -621,12 +630,14 @@ function! s:HandleOutput(chan, msg)
         if updateinfo_line == g:neodbg_prompt
             if neodbg_winnr != -1
                 if -1 == match(histget("cmd", -1), 'OpenConsole\|OpenLocals\|OpenRegisters\|OpenStacks\|OpenThreads\|OpenBreaks\|OpenDisas\|OpenExpressions\|OpenWatchs')
-                    call neodebug#GotoConsoleWindow()
+                  echomsg 'go to console wid at line 626: '
+                  call neodebug#GotoConsoleWindow()
                 endif
             endif
             "back to current window
             if -1 == match(histget("cmd", -1), 'OpenConsole\|OpenLocals\|OpenRegisters\|OpenStacks\|OpenThreads\|OpenBreaks\|OpenDisas\|OpenExpressions\|OpenWatchs')
-                call win_gotoid(s:cur_wid)
+              "echomsg 'go to wid at line 631: ' . s:cur_wid
+              call win_gotoid(s:cur_wid)
             endif
         endif
     endif
@@ -689,6 +700,7 @@ function! s:HandleOutput(chan, msg)
 
     let debugger_line = a:msg
     " message for console to display
+    echomsg 'debug line: ' . a:msg
     if debugger_line != '' && s:completer_skip_flag == 0 && s:updateinfo_skip_flag == 0
         " Handle 
         if debugger_line =~ '^\(\*stopped\|\^done,new-thread-id=\|\*running\|=thread-selected\)'
@@ -712,7 +724,8 @@ function! s:HandleOutput(chan, msg)
         endif
 
         if neodbg_winnr != -1
-            call neodebug#GotoConsoleWindow()
+          "echomsg 'go to colsole window at 717 line debug line ' . debugger_line . ' init flag: ' . s:neodbg_init_flag
+          call neodebug#GotoConsoleWindow()
         endif
 
         if s:neodbg_sendcmd_flag == 1
@@ -800,8 +813,9 @@ function! s:HandleOutput(chan, msg)
             if getline("$") != g:neodbg_prompt
                 " call append(line("$"), debugger_line)
                     if neodbg_winnr != -1
-                        call neodebug#GotoConsoleWindow()
-                        call append(line("$"), debugger_line)
+                      "echomsg 'go to console window at 805'
+                      call neodebug#GotoConsoleWindow()
+                      call append(line("$"), debugger_line)
                     else
                         call add(g:append_messages, debugger_line)
                     endif
@@ -830,13 +844,16 @@ function! s:HandleOutput(chan, msg)
         endif
 
         if debugger_line == g:neodbg_prompt && s:neodbg_init_flag == 0
-            call win_gotoid(s:cur_wid)
+          "echomsg 'go to window ' . s:cur_wid
+          call win_gotoid(s:cur_wid)
         endif
 
     endif
 
-    call neodebug#CloseLocalsWindow()
-    call neodebug#CloseExpressionsWindow()
+    "call win_gotoid(expr)
+    call win_gotoid(current_win)
+    "call neodebug#CloseLocalsWindow()
+    "call neodebug#CloseExpressionsWindow()
 
 endfunction
 
@@ -1073,10 +1090,8 @@ function! NeoDebugComplete(findstart, base)
         while s:output == ''
           sleep 10m
         endw
-        echomsg 'got the complete output '. s:output
 
         let s:completers = []
-        echomsg 'neodbg prompt: ' . g:neodbg_prompt
         let comps = split(s:output, '\~')
         let comp_len = len(comps)
         let last = comps[-1]
@@ -1098,7 +1113,7 @@ function! NeoDebugComplete(findstart, base)
         " find s:completers matching the "a:base"
         let res = []
         if len(s:completers) == 1 && EndsWith(s:completers[0], a:base)
-          return [a:base.' ']
+          return [a:base]
         endi
         for m in (s:completers)
           call add(res, split(m, ' ')[-1] . ' ')
@@ -1162,6 +1177,7 @@ function! NeoDebugRestoreCommandsShotcut()
     call neodebug#DeleteMenu()
     call neodebug#DeleteWinbar()
     call neodebug#DeletePopupMenu()
+    call NeoDebugRestoreStartWin()
 
     exe 'sign unplace ' . s:pc_id
     for key in keys(s:breakpoints)
@@ -1298,13 +1314,12 @@ function! NeoDebugSetBreakpoint()
     let do_continue = 0
     if !s:stopped
         let do_continue = 1
-        call NeoDebugSendCommand('-exec-interrupt')
+        call SendInterrupt()
         sleep 10m
     endif
     " call NeoDebugSendCommand('-break-insert '
     " \ . fnameescape(expand('%:p')) . ':' . line('.'))
-    call NeoDebugSendCommand('break '
-                \ . fnameescape(expand('%:p')) . ':' . line('.'))
+    call NeoDebugSendCommand('break ' . fnameescape(expand('%:p')) . ':' . line('.'))
     if do_continue
         call NeoDebugSendCommand('-exec-continue')
     endif
@@ -1408,64 +1423,67 @@ endfunction
 " Handle stopping and running message from debugger.
 " Will update the sign that shows the current position.
 function! s:HandleCursor(msg)
-    let wid = win_getid(winnr())
+  echomsg 'handle cursor: ' . a:msg
+  let wid = win_getid(winnr())
 
-    if a:msg =~ '\*stopped'
-        let s:stopped = 1
-    elseif a:msg =~ '\*running'
-        let s:stopped = 0
+  if a:msg =~ '\*stopped'
+    let s:stopped = 1
+  elseif a:msg =~ '\*running'
+    let s:stopped = 0
+  endif
+  if a:msg =~ '\(\*stopped,reason="breakpoint-hit"\)'
+    call  neodebug#UpdateBreakpoints()
+  endif
+
+  if a:msg =~ '\(\*stopped\)'
+    "first for locals windows cant refresh
+    "call neodebug#UpdateExpressions()
+
+    "call neodebug#UpdateLocals()
+    "call neodebug#UpdateRegisters()
+    "call neodebug#UpdateStackFrames()
+    "call neodebug#UpdateThreads()
+    "call neodebug#UpdateDisas()
+  endif
+
+  if win_gotoid(s:startwin)
+    setlocal scrolloff=10
+    let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
+    " let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
+    "fix mswin
+    " echomsg "HandleCursor:fname:".fname
+    if -1 == match(fname, '\\\\')
+      let fname = fname
+    else
+      let fname = substitute(fname, '\\\\','\\', 'g')
     endif
-    if a:msg =~ '\(\*stopped,reason="breakpoint-hit"\)'
-        " call  neodebug#UpdateBreakpoints()
-    endif
+    " echomsg "HandleCursor:fname:".fname
 
-    if a:msg =~ '\(\*stopped\)'
-        "first for locals windows cant refresh
-        call neodebug#UpdateExpressions()
-
-        call neodebug#UpdateLocals()
-        call neodebug#UpdateRegisters()
-        call neodebug#UpdateStackFrames()
-        call neodebug#UpdateThreads()
-        call neodebug#UpdateDisas()
-    endif
-
-    if win_gotoid(s:startwin)
-        let fname = substitute(a:msg, '.*fullname="\([^"]*\)".*', '\1', '')
-        " let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
-        "fix mswin
-        " echomsg "HandleCursor:fname:".fname
-        if -1 == match(fname, '\\\\')
-            let fname = fname
-        else
-            let fname = substitute(fname, '\\\\','\\', 'g')
+    if a:msg =~ '\(\*stopped\|=thread-selected\|new-thread-id=\)' && filereadable(fname)
+      let lnum = substitute(a:msg, '.*line="\([^"]*\)".*', '\1', '')
+      if lnum =~ '^[0-9]*$'
+        if expand('%:p') != fnamemodify(fname, ':p')
+          if &modified
+            " TODO: find existing window
+            exe 'split ' . fnameescape(fname)
+            let s:startwin = win_getid(winnr())
+          else
+            exe 'edit ' . fnameescape(fname)
+          endif
         endif
-        " echomsg "HandleCursor:fname:".fname
-
-        if a:msg =~ '\(\*stopped\|=thread-selected\|new-thread-id=\)' && filereadable(fname)
-            let lnum = substitute(a:msg, '.*line="\([^"]*\)".*', '\1', '')
-            if lnum =~ '^[0-9]*$'
-                if expand('%:p') != fnamemodify(fname, ':p')
-                    if &modified
-                        " TODO: find existing window
-                        exe 'split ' . fnameescape(fname)
-                        let s:startwin = win_getid(winnr())
-                    else
-                        exe 'edit ' . fnameescape(fname)
-                    endif
-                endif
-                " echomsg "HandleCursor:fname:lnum=".fname.':'.lnum
-                exe lnum
-                exe 'sign unplace ' . s:pc_id
-                exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=NeoDebugPC file=' . fname
-                setlocal signcolumn=yes
-            endif
-        else
-            exe 'sign unplace ' . s:pc_id
-        endif
-
-        call win_gotoid(wid)
+        " echomsg "HandleCursor:fname:lnum=".fname.':'.lnum
+        exe lnum
+        exe 'sign unplace ' . s:pc_id
+        exe 'sign place ' . s:pc_id . ' line=' . lnum . ' name=NeoDebugPC file=' . fname
+        setlocal signcolumn=yes
+      endif
+    else
+      exe 'sign unplace ' . s:pc_id
     endif
+
+    call NeoDebugSetStartWinReadOnly()
+    call win_gotoid(wid)
+  endif
 endfunction
 
 " Handle setting a breakpoint
@@ -1510,8 +1528,8 @@ function! s:HandleNewBreakpoint(msg)
     call win_gotoid(s:startwin)
     " exe 'e +'.lnum ' '.fname
     try
-        exe 'e '.fname
-        exe lnum
+        "exe 'e '.fname
+        "exe lnum
     catch /^Vim\%((\a\+)\)\=:E37/
         " TODO ask 
         silent echohl ModeMsg
@@ -1564,7 +1582,9 @@ function! s:NeoDebugGotoFile(fname, lnum)
     let lnum  = a:lnum
     let wid = win_getid(winnr())
 
+    echomsg 'go to win at line 1577: ' . s:startwin
     if win_gotoid(s:startwin)
+      call NeoDebugSetStartWinReadOnly()
         let fname = fnamemodify(fnamemodify(fname, ":t"), ":p")
 
         if filereadable(fname)
@@ -1587,6 +1607,7 @@ function! s:NeoDebugGotoFile(fname, lnum)
             endif
         endif
 
+        echomsg 'go to win at 1602: ' . wid
         call win_gotoid(wid)
     endif
 endfunction
@@ -1598,6 +1619,7 @@ function! s:CursorPos()
 endfunction
 
 function! NeoDebugJump()
+  echomsg ' go to wind at 1614: ' . s:startwin
     call win_gotoid(s:startwin)
     let key = s:CursorPos()
     "	call NeoDebug("@tb ".key." ; ju ".key)
@@ -1606,14 +1628,16 @@ function! NeoDebugJump()
 endfunction
 
 function! NeoDebugRunToCursor()
-    call win_gotoid(s:startwin)
-    let key = s:CursorPos()
-    call NeoDebug("tb ".key)
-    call NeoDebug("c")
+  echomsg ' go to wind at 1623: ' . s:startwin
+  call win_gotoid(s:startwin)
+  let key = s:CursorPos()
+  call NeoDebug("tb ".key)
+  call NeoDebug("c")
 endfunction
 
 function! NeoDebugGotoStartWin()
-    call win_gotoid(s:startwin)
+  echomsg ' go to wind at 1631: ' . s:startwin
+  call win_gotoid(s:startwin)
 endfunction
 
 command! -nargs=* -complete=file NeoDebug :call NeoDebug(<q-args>)
@@ -1640,3 +1664,89 @@ execute printf('command! %s%s call neodebug#CloseExpressions()       ', g:neodbg
 execute printf('command! %s%s call neodebug#CloseWatchpoints()       ', g:neodbg_cmd_prefix, 'CloseWatchs')
 
 " vim: set foldmethod=marker 
+
+func! EndHistoryMode()
+  call NeoDebugResetHistoryIdx()
+endfunc
+
+
+func! NeoDebugSetLine(cont, end_history_mode)
+  let txt = a:cont
+  "echomsg 'set line cont: ' . txt
+  call setline(line('.'), '(gdb) '.txt)
+  if a:end_history_mode == 1
+    call EndHistoryMode()
+  endif
+endfunc
+
+func! EnterHistoryMode()
+  let s:cur_history_cmd_idx = 0
+endfunc
+
+let s:cur_history_cmd_idx = 0
+func! NeoDebugGetPrevCmdHistory()
+  let s:cur_history_cmd_idx = s:cur_history_cmd_idx - 1
+  if s:cur_history_cmd_idx + len(s:neodbg_cmd_historys) == 0
+    let s:cur_history_cmd_idx = -len(s:neodbg_cmd_historys) + 1
+  endif
+  return s:neodbg_cmd_historys[s:cur_history_cmd_idx]
+endfunc
+
+func! NeoDebugGetNextCmdHistory()
+  let s:cur_history_cmd_idx = s:cur_history_cmd_idx + 1
+  if s:cur_history_cmd_idx == 0
+    return ''
+  elseif s:cur_history_cmd_idx > 0
+    let s:cur_history_cmd_idx = 0
+    return ''
+  endif
+  return s:neodbg_cmd_historys[s:cur_history_cmd_idx]
+endfunc
+
+func! NeoDebugResetHistoryIdx()
+  let s:cur_history_cmd_idx = 0
+endfunc
+
+func! NeoDebugGoToDebugConsole()
+  echomsg ' go to console window at 1703: ' . s:neodbg_console_win
+  call win_gotoid(s:neodbg_console_win)
+endfunction
+
+func! NeoDebugStackUp()
+  call NeoDebugSendCommand('up')
+  "echomsg res
+endfunc
+
+func! NeoDebugStackDown()
+  call NeoDebugSendCommand('down')
+endfunc
+
+func! NeoDebugSetStartWinReadOnly()
+  echomsg 'set start win to readonly, winid: ' . win_getid(winnr())
+  "setlocal signcolumn=no
+  setlocal readonly
+  nnoremap <buffer> c :call NeoDebugSendCommand('-exec-continue')<CR>
+  "nnoremap <buffer> <C-B> :call NeoDebugToggleBreakpoint()<CR>
+  nnoremap <buffer> u :call NeoDebugStackUp()<CR>
+
+  "nmap <buffer><silent> u :NeoDebug up<cr>
+  "nmap <buffer><silent> d :NeoDebug down<cr>
+  nnoremap <buffer> d :call NeoDebugStackDown()<CR>
+  nnoremap <buffer> p :call NeoDebugGoToDebugConsole()<CR>GAp 
+  nnoremap <buffer> i :call NeoDebugGoToDebugConsole()<CR>A
+  nnoremap <buffer> a :call NeoDebugGoToDebugConsole()<CR>A
+  nnoremap <buffer> o :call NeoDebugGoToDebugConsole()<CR>A
+
+endfunc
+
+func! NeoDebugRestoreStartWin()
+  setlocal noreadonly
+  nunmap <buffer> c
+  "nunmap <buffer> <C-B>
+  nunmap <buffer> u
+  nunmap <buffer> d
+  nunmap <buffer> p
+  nunmap <buffer> i
+  nunmap <buffer> a
+  nunmap <buffer> o
+endfunc

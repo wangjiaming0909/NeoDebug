@@ -67,13 +67,14 @@ function! neodebug#OpenConsole()
     setlocal nonumber
     setlocal winfixheight
     setlocal cursorline
-    setlocal signcolumn=no
+    "setlocal signcolumn=no
 
     setlocal foldcolumn=2
     setlocal foldtext=NeoDebugFoldTextExpr()
     setlocal foldmarker={,}
     setlocal foldmethod=marker
     setlocal wrap
+    setlocal winfixwidth
 
     call neodebug#InstallCommandsShotcut()
 
@@ -109,7 +110,7 @@ function! neodebug#OpenConsoleWindow(...)
     if line('$') <= 1 && g:neodbg_enable_help
         silent call append ( 0, s:help_text )
     endif
-    call neodebug#InstallWinbar()
+    "call neodebug#InstallWinbar()
 endfunction
 
 function neodebug#CloseConsole()
@@ -172,17 +173,22 @@ function! neodebug#CustomConsoleKey()
     noremap <expr><buffer>X  <SID>IsModifiableX() ? "X" : ""  
     vnoremap <buffer>x ""
 
-    noremap <expr><buffer>d  <SID>IsModifiablex() ? "d" : ""  
-    noremap <expr><buffer>u  <SID>IsModifiablex() ? "u" : ""  
+    "noremap <expr><buffer>d  <SID>IsModifiablex() ? "d" : ""  
+    "noremap <expr><buffer>u  <SID>IsModifiablex() ? "u" : ""  
+    noremap <buffer>u :call NeoDebugSendCommand('up')<CR>
+    noremap <buffer>d :call NeoDebugSendCommand('down')<CR>
     noremap <expr><buffer>U  <SID>IsModifiablex() ? "U" : ""  
 
     noremap <expr><buffer>s  <SID>IsModifiablex() ? "s" : ""  
     noremap <buffer> <silent> S :call <SID>NeoDebugKeyS()<cr>
+    "nnoremap <buffer> <silent>zz :call NeoDebugStartWinZZ()<cr>
 
-    noremap <expr><buffer>c  <SID>IsModifiablex() ? "c" : ""  
-    noremap <expr><buffer>C  <SID>IsModifiablex() ? "C" : ""  
+    "noremap <expr><buffer>c  <SID>IsModifiablex() ? "c" : ""  
+    "noremap <expr><buffer>C  <SID>IsModifiablex() ? "C" : ""  
 
-    noremap <expr><buffer>p  <SID>IsModifiable() ? "p" : ""  
+    "noremap <expr><buffer>p  <SID>IsModifiable() ? "p" : "p "
+    nmap <buffer>p Ap 
+    noremap <buffer>c :NeoDebug c<CR>
     noremap <expr><buffer>P  <SID>IsModifiablex() ? "P" : ""  
 
 
@@ -195,10 +201,15 @@ function! neodebug#CustomConsoleKey()
     inoremap <expr><buffer><Right>      <SID>IsModifiablex() ? "<Right>"  : ""  
     noremap <expr><buffer><Right>       <SID>IsModifiablex() ? "<Right>"  : ""  
 
-    inoremap <expr><buffer><Home>       "" 
+    inoremap <expr><buffer><Home>       ""
     inoremap <expr><buffer><End>        ""
-    inoremap <expr><buffer><Up>         ""
-    inoremap <expr><buffer><Down>       ""
+    nnoremap <buffer><C-k>         i<ESC>:call NeoDebugSetLine(NeoDebugGetPrevCmdHistory(), 0)<CR>$
+    inoremap <buffer><C-k>         <ESC>:call NeoDebugSetLine(NeoDebugGetPrevCmdHistory(), 0)<CR>A
+    inoremap <buffer><Up>         <ESC>:call NeoDebugSetLine(NeoDebugGetPrevCmdHistory(), 0)<CR>A
+    nnoremap <buffer><C-j>       i<ESC>:call NeoDebugSetLine(NeoDebugGetNextCmdHistory(), 0)<CR>$
+    inoremap <buffer><C-j>       <ESC>:call NeoDebugSetLine(NeoDebugGetNextCmdHistory(), 0)<CR>A
+    inoremap <buffer><Down>       <ESC>:call NeoDebugSetLine(NeoDebugGetNextCmdHistory(), 0)<CR>A
+    "nnoremap <buffer>cc           <ESC>:call NeoDebugSetLine('', 1)<CR>A
     inoremap <expr><buffer><S-Up>       ""
     inoremap <expr><buffer><S-Down>     ""
     inoremap <expr><buffer><S-Left>     ""
@@ -1189,6 +1200,7 @@ function! neodebug#OpenWatchpoints()
     setlocal nonumber
     setlocal winfixwidth
     setlocal cursorline
+    "setlocal signcolumn=no
 
     setlocal foldcolumn=2
     setlocal foldmarker={,}
@@ -1617,9 +1629,9 @@ endfunction
 
 function! neodebug#SetWindowSytaxHilight()
 
-    "hi NeoDbgBreakPoint    guibg=darkblue  ctermbg=darkblue term=reverse 
-    "hi NeoDbgDisabledBreak guibg=lightblue guifg=black ctermbg=lightblue ctermfg=black
-    hi NeoDbgPC            guibg=Orange    guifg=black gui=bold ctermbg=11 ctermfg=black
+    hi NeoDbgBreakPoint    guibg=darkblue  ctermbg=100 term=reverse 
+    hi NeoDbgDisabledBreak guibg=lightblue guifg=black ctermbg=lightblue ctermfg=black
+    "hi NeoDbgPC            guibg=Orange    guifg=black gui=bold ctermbg=11 ctermfg=black
 
     " hi NeoDbgBreakPoint guibg=darkred guifg=white ctermbg=darkred ctermfg=white
     " hi NeoDbgDisabledBreak guibg=lightred guifg=black ctermbg=lightred ctermfg=black
@@ -1668,7 +1680,7 @@ function! neodebug#InstallShotcut()
 
     noremap <buffer><silent>? :call neodebug#ToggleHelp()<cr>
 
-    inoremap <expr><buffer> <silent> <c-p>  "\<c-x><c-l>"
+    "inoremap <expr><buffer> <silent> <c-p>  "\<c-x><c-l>"
     inoremap <expr><buffer> <silent> <c-r>  "\<c-x><c-n>"
 
     inoremap <expr><buffer><silent> <TAB>    pumvisible() ? "\<C-n>" : "\<c-x><c-u>"
